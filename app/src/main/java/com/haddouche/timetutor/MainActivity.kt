@@ -16,17 +16,9 @@ import com.haddouche.timetutor.ui.theme.TimeTutorTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            TimeTutorTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
-        }
+        val intent = android.content.Intent(this, com.haddouche.timetutor.ui.auth.LoginActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 }
 
