@@ -2,9 +2,43 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Vista Configuración Profesor"
-        android:layout_gravity="center" />
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_gravity="center">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Configuración de profesor"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginBottom="24dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Modo de la app:"/>
+        <RadioGroup
+            android:id="@+id/radioGroupTema"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <RadioButton
+                android:id="@+id/radioClaro"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Claro"/>
+            <RadioButton
+                android:id="@+id/radioOscuro"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Oscuro"/>
+            <RadioButton
+                android:id="@+id/radioSistema"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sistema"/>
+        </RadioGroup>
+    </LinearLayout>
 </FrameLayout>
