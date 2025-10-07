@@ -12,12 +12,15 @@ import android.widget.ImageView
 import android.widget.Switch
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.haddouche.timetutor.R
 import com.haddouche.timetutor.model.User
 import com.squareup.picasso.Picasso
+import android.widget.TextView
 
 class PerfilAlumnoFragment : Fragment() {
     private val db = FirebaseFirestore.getInstance()
@@ -42,6 +45,12 @@ class PerfilAlumnoFragment : Fragment() {
         val correoTutorField = view.findViewById<EditText>(R.id.editCorreoTutor)
         val categoriaField = view.findViewById<EditText>(R.id.editCategoria)
         val btnGuardar = view.findViewById<Button>(R.id.btnGuardarPerfil)
+        val recyclerFacturas = view.findViewById<RecyclerView?>(R.id.recyclerFacturasAlumno)
+
+        recyclerFacturas?.layoutManager = LinearLayoutManager(context)
+        cargarFacturasAlumno { facturas ->
+            recyclerFacturas?.adapter = FacturaAlumnoAdapter(facturas)
+        }
 
         val uid = auth.currentUser?.uid ?: ""
         db.collection("users").document(uid).get().addOnSuccessListener { doc ->
@@ -115,6 +124,82 @@ class PerfilAlumnoFragment : Fragment() {
             }
         }
         return view
+    }
+
+    private fun cargarFacturasAlumno(onLoaded: (List<FacturaAlumno>) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+        val auth = FirebaseAuth.getInstance()
+        val uid = auth.currentUser?.uid ?: return
+        db.collection("facturas")
+            .whereEqualTo("uidAlumno", uid)
+            .get()
+            .addOnSuccessListener { result ->
+                val facturas = result.map { doc ->
+                    FacturaAlumno(
+                        fecha = doc.getString("fecha") ?: "",
+                        cantidad = doc.getDouble("cantidad") ?: 0.0,
+                        pagada = doc.getBoolean("pagada") ?: false
+                    )
+                }
+                onLoaded(facturas)
+            }
+    }
+
+    data class FacturaAlumno(
+        val fecha: String,
+        val cantidad: Double,
+        val pagada: Boolean
+    )
+
+    class FacturaAlumnoAdapter(private val facturas: List<FacturaAlumno>) : RecyclerView.Adapter<FacturaAlumnoAdapter.FacturaAlumnoViewHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FacturaAlumnoViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_factura, parent, false)
+            return FacturaAlumnoViewHolder(view)
+        }
+        override fun onBindViewHolder(holder: FacturaAlumnoViewHolder, position: Int) {
+            holder.bind(facturas[position])
+            holder.itemView.setOnClickListener {
+                val factura = facturas[position]
+                mostrarDetalleClases(factura)
+            }
+        }
+        override fun getItemCount() = facturas.size
+
+        private fun mostrarDetalleClases(factura: FacturaAlumno) {
+            val db = FirebaseFirestore.getInstance()
+            val auth = FirebaseAuth.getInstance()
+            val uid = auth.currentUser?.uid ?: return
+            db.collection("clases")
+                .whereEqualTo("uidAlumno", uid)
+                .whereGreaterThanOrEqualTo("fecha", factura.fecha)
+                .get()
+                .addOnSuccessListener { result ->
+                    val clases = result.filter { it.getBoolean("asistenciaMarcada") == true }
+                        .joinToString("\n") {
+                            val fecha = it.getString("fecha") ?: ""
+                            val horaInicio = it.getString("horaInicio") ?: ""
+                            val horaFin = it.getString("horaFin") ?: ""
+                            "- $fecha de $horaInicio a $horaFin"
+                        }
+                    val mensaje = if (clases.isEmpty()) "No hay clases asistidas en esta factura." else "Clases incluidas:\n$clases"
+                    androidx.appcompat.app.AlertDialog.Builder(holder.itemView.context)
+                        .setTitle("Detalle de factura")
+                        .setMessage(mensaje)
+                        .setPositiveButton("Cerrar", null)
+                        .show()
+                }
+        }
+
+        class FacturaAlumnoViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+            fun bind(factura: FacturaAlumno) {
+                val fechaView = itemView.findViewById<TextView>(R.id.textFechaFactura)
+                val cantidadView = itemView.findViewById<TextView>(R.id.textCantidadFactura)
+                val estadoView = itemView.findViewById<TextView>(R.id.textEstadoFactura)
+                fechaView.text = factura.fecha
+                cantidadView.text = "€${factura.cantidad}"
+                estadoView.text = if (factura.pagada) "Pagada" else "Pendiente"
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

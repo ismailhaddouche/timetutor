@@ -14,28 +14,39 @@
         android:padding="16dp">
 
         <TextView
-            android:id="@+id/textFranja"
+            android:id="@+id/textNombreFactura"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="16:00 - 17:30"
+            android:text="Alumno"
             android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
             android:textColor="@color/black" />
 
         <TextView
-            android:id="@+id/textAlumnos"
+            android:id="@+id/textFechaFactura"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Alumnos: Juan, Pep"
+            android:text="Fecha"
             android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
             android:textColor="@color/black"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="4dp" />
 
-        <CheckBox
-            android:id="@+id/checkAsistencia"
+        <TextView
+            android:id="@+id/textCantidadFactura"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Asistencia marcada"
-            android:layout_marginTop="8dp" />
+            android:text="Cantidad"
+            android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+            android:textColor="@color/black"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/textEstadoFactura"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Estado"
+            android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+            android:textColor="@color/black"
+            android:layout_marginTop="4dp" />
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

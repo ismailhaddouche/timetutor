@@ -15,6 +15,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.haddouche.timetutor.model.User
 import android.widget.Button
+import androidx.appcompat.app.AlertDialog
+import java.text.SimpleDateFormat
+import java.util.*
 
 class AlumnosProfesorFragment : Fragment() {
     private lateinit var tabLayout: TabLayout
@@ -103,7 +106,101 @@ class AlumnosProfesorFragment : Fragment() {
                 Toast.makeText(context, "Asignar clase a ${alumno.nombre}", Toast.LENGTH_SHORT).show()
                 // Aquí iría la lógica para asignar clase
             }
+            "info" -> {
+                mostrarInfoAlumno(alumno)
+            }
         }
+    }
+
+    private fun mostrarInfoAlumno(alumno: User) {
+        db.collection("facturas")
+            .whereEqualTo("uidProfesor", auth.currentUser?.uid ?: "")
+            .whereEqualTo("nombreAlumno", alumno.nombre)
+            .get()
+            .addOnSuccessListener { result ->
+                val facturas = result.map {
+                    val pagada = it.getBoolean("pagada") ?: false
+                    val fecha = it.getString("fecha") ?: ""
+                    val cantidad = it.getDouble("cantidad") ?: 0.0
+                    "${fecha}: €${cantidad} - " + if (pagada) "Pagada" else "Pendiente"
+                }
+                val info = "Nombre: ${alumno.nombre}\nEmail: ${alumno.email}\nTeléfono: ${alumno.telefono}\n\nFacturas:\n" +
+                    if (facturas.isEmpty()) "Sin facturas" else facturas.joinToString("\n")
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Información de alumno")
+                    .setMessage(info)
+                    .setPositiveButton("Generar factura") { _, _ ->
+                        generarFacturaManual(alumno)
+                    }
+                    .setNegativeButton("Cerrar", null)
+                    .show()
+            }
+    }
+
+    private fun generarFacturaManual(alumno: User) {
+        val uidProfesor = auth.currentUser?.uid ?: ""
+        // Buscar la última factura
+        db.collection("facturas")
+            .whereEqualTo("uidProfesor", uidProfesor)
+            .whereEqualTo("uidAlumno", alumno.uid)
+            .orderBy("fecha", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { factSnap ->
+                val ultimaFecha = factSnap.documents.firstOrNull()?.getString("fecha") ?: "1970-01-01"
+                // Buscar clases desde la última factura
+                db.collection("clases")
+                    .whereEqualTo("uidProfesor", uidProfesor)
+                    .whereEqualTo("uidAlumno", alumno.uid)
+                    .whereGreaterThan("fecha", ultimaFecha)
+                    .get()
+                    .addOnSuccessListener { clasesSnap ->
+                        val clases = clasesSnap.map {
+                            val asistenciaMarcada = it.getBoolean("asistenciaMarcada") ?: false
+                            val duracionMin = it.getLong("duracionMin")?.toInt() ?: 60 // duración en minutos
+                            ClaseDeAlumno(
+                                nombreAlumno = alumno.nombre,
+                                fecha = it.getString("fecha") ?: "",
+                                asistenciaMarcada = asistenciaMarcada,
+                                duracionMin = duracionMin
+                            )
+                        }
+                        if (clases.any { !it.asistenciaMarcada }) {
+                            AlertDialog.Builder(requireContext())
+                                .setTitle("Clases sin marcar asistencia")
+                                .setMessage("Debes marcar la asistencia de todas las clases antes de generar la factura.")
+                                .setPositiveButton("OK", null)
+                                .show()
+                        } else {
+                            // Obtener precio por hora de la categoría
+                            db.collection("categorias")
+                                .whereEqualTo("uidProfesor", uidProfesor)
+                                .whereEqualTo("nombre", alumno.categoria)
+                                .get()
+                                .addOnSuccessListener { catSnap ->
+                                    val precioHora = catSnap.documents.firstOrNull()?.getDouble("precioMediaHora")?.times(2) ?: 0.0
+                                    val totalMin = clases.sumOf { it.duracionMin }
+                                    val cantidad = (totalMin / 60.0) * precioHora
+                                    val fechaHoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                                    db.collection("facturas").add(
+                                        mapOf(
+                                            "uidProfesor" to uidProfesor,
+                                            "uidAlumno" to alumno.uid,
+                                            "nombreAlumno" to alumno.nombre,
+                                            "apellidosAlumno" to alumno.apellidos,
+                                            "whatsappAlumno" to alumno.telefono,
+                                            "emailAlumno" to alumno.email,
+                                            "fecha" to fechaHoy,
+                                            "cantidad" to cantidad,
+                                            "pagada" to false
+                                        )
+                                    ).addOnSuccessListener {
+                                        Toast.makeText(context, "Factura generada", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                        }
+                    }
+            }
     }
 
 }
@@ -129,6 +226,7 @@ class AlumnoAdapter(
             val btnAccion = itemView.findViewById<Button>(R.id.btnAccionAlumno)
             nombreView.text = alumno.nombre
             asignaturaView.text = alumno.nombreCalendario
+            itemView.setOnClickListener { onAction(alumno, tabIndex, "info") }
             when (tabIndex) {
                 0 -> {
                     btnAccion.text = "Asignar clase"
@@ -148,3 +246,10 @@ class AlumnoAdapter(
         }
     }
 }
+
+data class ClaseDeAlumno(
+    val nombreAlumno: String = "",
+    val fecha: String = "",
+    val asistenciaMarcada: Boolean = false,
+    val duracionMin: Int = 60
+)
