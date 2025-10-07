@@ -25,6 +25,23 @@ class InicioAlumnoFragment : Fragment() {
         recyclerView.adapter = DiaAdapter(clasesSemana) { dia ->
             Toast.makeText(context, "Clases: " + dia.clases.joinToString(", ") { it.nombre }, Toast.LENGTH_LONG).show()
         }
+
+        // Botón para acceder a facturas
+        val btnFacturas = view.findViewById<View?>(R.id.btnFacturasAlumno)
+        btnFacturas?.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(id, com.haddouche.timetutor.ui.alumno.FacturasAlumnoFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+        // Botón para acceder al centro de notificaciones
+        val btnNotificaciones = view.findViewById<View?>(R.id.btnNotificaciones)
+        btnNotificaciones?.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(id, com.haddouche.timetutor.ui.common.NotificacionesFragment())
+                .addToBackStack(null)
+                .commit()
+        }
         return view
     }
 

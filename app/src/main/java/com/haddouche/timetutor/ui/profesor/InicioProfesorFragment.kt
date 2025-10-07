@@ -19,6 +19,7 @@ import android.widget.Spinner
 import android.widget.ArrayAdapter
 import java.text.SimpleDateFormat
 import java.util.*
+import com.haddouche.timetutor.util.NotificacionesUtil
 
 class InicioProfesorFragment : Fragment() {
     override fun onCreateView(
@@ -27,6 +28,15 @@ class InicioProfesorFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_inicio_profesor, container, false)
+        // Aviso de conectividad
+        val connectivityManager = requireContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork
+        val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
+        val online = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        if (!online) {
+            android.widget.Toast.makeText(context, "Estás sin conexión. Los cambios no se sincronizarán hasta que recuperes la red.", android.widget.Toast.LENGTH_LONG).show()
+        }
+
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerClasesHoy)
         recyclerView.layoutManager = LinearLayoutManager(context)
         val clasesHoy = getClasesHoyMock()
@@ -42,6 +52,14 @@ class InicioProfesorFragment : Fragment() {
         btnVistaSemanal.setOnClickListener {
             Toast.makeText(context, "Cambiando a vista semanal", Toast.LENGTH_SHORT).show()
         }
+        // Botón para acceder al centro de notificaciones
+        val btnNotificaciones = view.findViewById<View?>(R.id.btnNotificacionesProfesor)
+        btnNotificaciones?.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(id, com.haddouche.timetutor.ui.common.NotificacionesFragment())
+                .addToBackStack(null)
+                .commit()
+        }
         return view
     }
 
@@ -51,9 +69,23 @@ class InicioProfesorFragment : Fragment() {
         val editHoraInicio = dialogView.findViewById<EditText>(R.id.editHoraInicio)
         val editHoraFin = dialogView.findViewById<EditText>(R.id.editHoraFin)
 
-        // Mock de alumnos, reemplazar por consulta real
-        val alumnos = listOf("Juan", "Maria", "Pep")
-        spinnerAlumno.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, alumnos)
+        // Obtener alumnos reales del profesor
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        val uidProfesor = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val alumnos = mutableListOf<String>()
+        val alumnosUid = mutableListOf<String>()
+        db.collection("users")
+            .whereEqualTo("role", "alumno")
+            .get()
+            .addOnSuccessListener { result ->
+                for (doc in result) {
+                    if (doc.getString("estadoAlumno_$uidProfesor") == "activo") {
+                        alumnos.add(doc.getString("nombre") ?: "")
+                        alumnosUid.add(doc.id)
+                    }
+                }
+                spinnerAlumno.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, alumnos)
+            }
 
         val horaListener = { edit: EditText ->
             val now = Calendar.getInstance()
@@ -73,9 +105,11 @@ class InicioProfesorFragment : Fragment() {
             .setView(dialogView)
             .setPositiveButton("Guardar") { _, _ ->
                 val alumno = spinnerAlumno.selectedItem?.toString() ?: ""
+                val idx = spinnerAlumno.selectedItemPosition
+                val uidAlumno = if (idx >= 0 && idx < alumnosUid.size) alumnosUid[idx] else null
                 val horaInicio = editHoraInicio.text.toString()
                 val horaFin = editHoraFin.text.toString()
-                if (alumno.isBlank() || horaInicio.isBlank() || horaFin.isBlank()) {
+                if (alumno.isBlank() || horaInicio.isBlank() || horaFin.isBlank() || uidAlumno == null) {
                     Toast.makeText(context, "Completa todos los campos", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
@@ -91,11 +125,54 @@ class InicioProfesorFragment : Fragment() {
                     Toast.makeText(context, "La clase debe durar al menos 30 minutos", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                // Aquí iría la lógica real para guardar la clase en Firestore
-                Toast.makeText(context, "Clase añadida para $alumno de $horaInicio a $horaFin", Toast.LENGTH_LONG).show()
+                // Guardar la clase en Firestore (ejemplo básico)
+                val clase = hashMapOf(
+                    "uidProfesor" to uidProfesor,
+                    "uidAlumno" to uidAlumno,
+                    "nombreAlumno" to alumno,
+                    "horaInicio" to horaInicio,
+                    "horaFin" to horaFin,
+                    "fecha" to SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(java.util.Date()),
+                    "asistenciaMarcada" to false
+                )
+                db.collection("clases").add(clase).addOnSuccessListener {
+                    // Notificación al alumno
+                    NotificacionesUtil.enviarNotificacion(
+                        uidDestino = uidAlumno,
+                        titulo = "Clase añadida o modificada",
+                        mensaje = "Se ha añadido o modificado una clase en tu horario."
+                    )
+                    // Notificación al profesor
+                    NotificacionesUtil.enviarNotificacion(
+                        uidDestino = uidProfesor,
+                        titulo = "Clase añadida o modificada",
+                        mensaje = "Has añadido o modificado una clase."
+                    )
+                    Toast.makeText(context, "Clase añadida para $alumno de $horaInicio a $horaFin", Toast.LENGTH_LONG).show()
+                }
             }
             .setNegativeButton("Cancelar", null)
             .show()
+
+    // Función para eliminar una clase (ejemplo genérico)
+    fun eliminarClase(idClase: String, uidAlumno: String) {
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        val uidProfesor = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        db.collection("clases").document(idClase).delete().addOnSuccessListener {
+            // Notificación al alumno
+            NotificacionesUtil.enviarNotificacion(
+                uidDestino = uidAlumno,
+                titulo = "Clase eliminada",
+                mensaje = "Una clase ha sido eliminada de tu horario."
+            )
+            // Notificación al profesor
+            NotificacionesUtil.enviarNotificacion(
+                uidDestino = uidProfesor,
+                titulo = "Clase eliminada",
+                mensaje = "Has eliminado una clase."
+            )
+        }
+    }
     }
 
     // Mock temporal para demo visual

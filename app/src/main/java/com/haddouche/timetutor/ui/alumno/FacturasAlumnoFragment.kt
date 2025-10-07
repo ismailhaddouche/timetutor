@@ -1,4 +1,4 @@
-package com.haddouche.timetutor.ui.profesor
+package com.haddouche.timetutor.ui.alumno
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -11,24 +11,19 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.widget.TextView
 import android.widget.Toast
-import android.widget.Spinner
-import android.widget.ArrayAdapter
 import android.widget.EditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.haddouche.timetutor.util.NotificacionesUtil
 
-class FacturasProfesorFragment : Fragment() {
+class FacturasAlumnoFragment : Fragment() {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private lateinit var tabLayout: TabLayout
     private lateinit var recyclerView: RecyclerView
-    private lateinit var spinnerAlumnos: Spinner
     private lateinit var editFecha: EditText
     private var facturasTodas = listOf<Factura>()
     private var facturasPagadas = listOf<Factura>()
     private var facturasPendientes = listOf<Factura>()
-    private var alumnos = listOf<String>()
     private var exportando = false
 
     override fun onCreateView(
@@ -36,11 +31,10 @@ class FacturasProfesorFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_facturas_profesor, container, false)
-        tabLayout = view.findViewById(R.id.tabFacturas)
-        recyclerView = view.findViewById(R.id.recyclerFacturas)
-        spinnerAlumnos = view.findViewById(R.id.spinnerAlumnos)
-        editFecha = view.findViewById(R.id.editFecha)
+        val view = inflater.inflate(R.layout.fragment_facturas_alumno, container, false)
+        tabLayout = view.findViewById(R.id.tabFacturasAlumno)
+        recyclerView = view.findViewById(R.id.recyclerFacturasAlumno)
+        editFecha = view.findViewById(R.id.editFechaAlumno)
         recyclerView.layoutManager = LinearLayoutManager(context)
 
         // Aviso de conectividad
@@ -56,10 +50,8 @@ class FacturasProfesorFragment : Fragment() {
         tabLayout.addTab(tabLayout.newTab().setText("Pagadas"))
         tabLayout.addTab(tabLayout.newTab().setText("Pendientes"))
 
-        cargarAlumnos {
-            cargarFacturas {
-                mostrarFacturas(0)
-            }
+        cargarFacturas {
+            mostrarFacturas(0)
         }
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -70,22 +62,52 @@ class FacturasProfesorFragment : Fragment() {
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
 
-        spinnerAlumnos.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>, view: View?, position: Int, id: Long) {
-                mostrarFacturas(tabLayout.selectedTabPosition)
-            }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
-        }
-
         editFecha.setOnEditorActionListener { _, _, _ ->
             mostrarFacturas(tabLayout.selectedTabPosition)
             true
         }
-        val btnExportar = view.findViewById<android.widget.Button>(R.id.btnExportarFacturas)
+
+        val btnExportar = view.findViewById<android.widget.Button>(R.id.btnExportarFacturasAlumno)
         btnExportar.setOnClickListener {
             if (!exportando) mostrarDialogoExportar()
         }
         return view
+    }
+
+    private fun cargarFacturas(onLoaded: () -> Unit) {
+        val uidAlumno = auth.currentUser?.uid ?: ""
+        db.collection("facturas")
+            .whereEqualTo("uidAlumno", uidAlumno)
+            .get()
+            .addOnSuccessListener { result ->
+                val todas = mutableListOf<Factura>()
+                val pagadas = mutableListOf<Factura>()
+                val pendientes = mutableListOf<Factura>()
+                for (doc in result) {
+                    val factura = doc.toObject(Factura::class.java)
+                    todas.add(factura)
+                    if (factura.pagada) pagadas.add(factura) else pendientes.add(factura)
+                }
+                facturasTodas = todas
+                facturasPagadas = pagadas
+                facturasPendientes = pendientes
+                onLoaded()
+            }
+    }
+
+    private fun mostrarFacturas(tabIndex: Int) {
+        val fechaFiltro = editFecha.text.toString().trim()
+        val facturas = when (tabIndex) {
+            0 -> facturasTodas
+            1 -> facturasPagadas
+            2 -> facturasPendientes
+            else -> facturasTodas
+        }.filter {
+            fechaFiltro.isEmpty() || it.fecha.contains(fechaFiltro)
+        }
+        recyclerView.adapter = FacturaAdapter(facturas)
+    }
+
     private fun mostrarDialogoExportar() {
         val opciones = arrayOf("Exportar a PDF", "Exportar a CSV")
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
@@ -102,7 +124,6 @@ class FacturasProfesorFragment : Fragment() {
 
     private fun obtenerFacturasFiltradas(): List<Factura> {
         val tabIndex = tabLayout.selectedTabPosition
-        val alumnoFiltro = spinnerAlumnos.selectedItem?.toString() ?: "Todos"
         val fechaFiltro = editFecha.text.toString().trim()
         return when (tabIndex) {
             0 -> facturasTodas
@@ -110,8 +131,7 @@ class FacturasProfesorFragment : Fragment() {
             2 -> facturasPendientes
             else -> facturasTodas
         }.filter {
-            (alumnoFiltro == "Todos" || it.nombreAlumno == alumnoFiltro) &&
-            (fechaFiltro.isEmpty() || it.fecha.contains(fechaFiltro))
+            fechaFiltro.isEmpty() || it.fecha.contains(fechaFiltro)
         }
     }
 
@@ -129,7 +149,7 @@ class FacturasProfesorFragment : Fragment() {
         }
         val csv = "$header\n$rows"
         try {
-            val fileName = "facturas_profesor_${System.currentTimeMillis()}.csv"
+            val fileName = "facturas_alumno_${System.currentTimeMillis()}.csv"
             val file = java.io.File(requireContext().cacheDir, fileName)
             file.writeText(csv)
             compartirArchivo(file, "text/csv")
@@ -148,7 +168,7 @@ class FacturasProfesorFragment : Fragment() {
             return
         }
         try {
-            val fileName = "facturas_profesor_${System.currentTimeMillis()}.pdf"
+            val fileName = "facturas_alumno_${System.currentTimeMillis()}.pdf"
             val file = java.io.File(requireContext().cacheDir, fileName)
             val fos = java.io.FileOutputStream(file)
             val pdf = com.itextpdf.text.Document()
@@ -186,89 +206,6 @@ class FacturasProfesorFragment : Fragment() {
         intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
         startActivity(android.content.Intent.createChooser(intent, "Compartir archivo"))
     }
-    }
-
-    private fun cargarAlumnos(onLoaded: () -> Unit) {
-        val uidProfesor = auth.currentUser?.uid ?: ""
-        db.collection("users")
-            .whereEqualTo("role", "alumno")
-            .get()
-            .addOnSuccessListener { result ->
-                alumnos = result.map { it.getString("nombre") ?: "" }
-                spinnerAlumnos.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, listOf("Todos") + alumnos)
-                onLoaded()
-            }
-    }
-
-    private fun cargarFacturas(onLoaded: () -> Unit) {
-        val uidProfesor = auth.currentUser?.uid ?: ""
-        db.collection("facturas")
-            .whereEqualTo("uidProfesor", uidProfesor)
-            .get()
-            .addOnSuccessListener { result ->
-                val todas = mutableListOf<Factura>()
-                val pagadas = mutableListOf<Factura>()
-                val pendientes = mutableListOf<Factura>()
-                for (doc in result) {
-                    val factura = doc.toObject(Factura::class.java)
-                    todas.add(factura)
-                    if (factura.pagada) pagadas.add(factura) else pendientes.add(factura)
-                }
-                facturasTodas = todas
-                facturasPagadas = pagadas
-                facturasPendientes = pendientes
-                onLoaded()
-            }
-    }
-
-    private fun mostrarFacturas(tabIndex: Int) {
-        val alumnoFiltro = spinnerAlumnos.selectedItem?.toString() ?: "Todos"
-        val fechaFiltro = editFecha.text.toString().trim()
-        val facturas = when (tabIndex) {
-            0 -> facturasTodas
-            1 -> facturasPagadas
-            2 -> facturasPendientes
-            else -> facturasTodas
-        }.filter {
-            (alumnoFiltro == "Todos" || it.nombreAlumno == alumnoFiltro) &&
-            (fechaFiltro.isEmpty() || it.fecha.contains(fechaFiltro))
-        }
-        recyclerView.adapter = FacturaAdapter(facturas)
-    }
-
-    // Lógica para comprobar si se puede facturar
-    private fun puedeGenerarFacturaParaAlumno(alumno: String, clases: List<ClaseDeAlumno>): Boolean {
-        return clases.filter { it.nombreAlumno == alumno }.all { it.asistenciaMarcada }
-    }
-
-    private fun intentarGenerarFactura(alumno: String, clases: List<ClaseDeAlumno>) {
-        val uidAlumno = "UID_ALUMNO_AQUI" // Reemplazar por el uid real del alumno
-        val uidProfesor = auth.currentUser?.uid ?: ""
-        if (!puedeGenerarFacturaParaAlumno(alumno, clases)) {
-            Toast.makeText(context, "No se puede generar factura: hay clases sin marcar asistencia para $alumno", Toast.LENGTH_LONG).show()
-            // Notificación al profesor de error
-            NotificacionesUtil.enviarNotificacion(
-                uidDestino = uidProfesor,
-                titulo = "Error al crear factura",
-                mensaje = "No se pudo generar la factura para $alumno: hay clases sin asistencia."
-            )
-            return
-        }
-        // Lógica para generar factura
-        // ...
-        // Notificación al alumno de nueva factura
-        NotificacionesUtil.enviarNotificacion(
-            uidDestino = uidAlumno,
-            titulo = "Nueva factura generada",
-            mensaje = "Se ha generado una nueva factura para ti."
-        )
-    }
-
-    private fun recargarFacturas() {
-        cargarFacturas {
-            mostrarFacturas(tabLayout.selectedTabPosition)
-        }
-    }
 
     inner class FacturaAdapter(private val facturas: List<Factura>) : RecyclerView.Adapter<FacturaAdapter.FacturaViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FacturaViewHolder {
@@ -289,11 +226,6 @@ class FacturasProfesorFragment : Fragment() {
                     .setTitle("Detalle de factura")
                     .setMessage(detalle)
                     .setPositiveButton("Cerrar", null)
-                if (!factura.pagada) {
-                    builder.setNegativeButton("Marcar como pagada") { _, _ ->
-                        marcarFacturaComoPagada(factura)
-                    }
-                }
                 builder.show()
             }
         }
@@ -311,49 +243,7 @@ class FacturasProfesorFragment : Fragment() {
                 estadoView.text = if (factura.pagada) "Pagada" else "Pendiente"
             }
         }
-
-        private fun marcarFacturaComoPagada(factura: Factura) {
-            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-            db.collection("facturas")
-                .whereEqualTo("uidProfesor", factura.uidProfesor)
-                .whereEqualTo("uidAlumno", factura.uidAlumno)
-                .whereEqualTo("fecha", factura.fecha)
-                .get()
-                .addOnSuccessListener { snap ->
-                    for (doc in snap) {
-                        doc.reference.update("pagada", true)
-                    }
-                    // Notificación al alumno
-                    NotificacionesUtil.enviarNotificacion(
-                        factura.uidAlumno,
-                        "Factura pagada",
-                        "Tu factura del ${factura.fecha} ha sido marcada como pagada."
-                    )
-                    android.widget.Toast.makeText(
-                        holder?.itemView?.context ?: return@addOnSuccessListener,
-                        "Factura marcada como pagada",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                    recargarFacturas()
-                }
-        }
     }
 }
 
-data class Factura(
-    val uidProfesor: String = "",
-    val uidAlumno: String = "",
-    val nombreAlumno: String = "",
-    val apellidosAlumno: String? = null,
-    val whatsappAlumno: String? = null,
-    val emailAlumno: String? = null,
-    val fecha: String = "",
-    val cantidad: Double = 0.0,
-    val pagada: Boolean = false
-)
-
-data class ClaseDeAlumno(
-    val nombreAlumno: String = "",
-    val fecha: String = "",
-    val asistenciaMarcada: Boolean = false
-)
+// Reutilizamos el data class Factura ya definido en el fragmento de profesor

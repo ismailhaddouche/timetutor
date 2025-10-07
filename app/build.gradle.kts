@@ -40,6 +40,8 @@ android {
 }
 
 dependencies {
+    // Notificaciones push
+    implementation("com.google.firebase:firebase-messaging:23.4.1")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

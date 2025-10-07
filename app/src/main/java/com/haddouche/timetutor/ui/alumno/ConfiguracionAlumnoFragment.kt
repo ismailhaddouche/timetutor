@@ -21,6 +21,14 @@ class ConfiguracionAlumnoFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_configuracion_alumno, container, false)
+        // Aviso de conectividad
+        val connectivityManager = requireContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork
+        val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
+        val online = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        if (!online) {
+            android.widget.Toast.makeText(context, "Estás sin conexión. Los cambios no se sincronizarán hasta que recuperes la red.", android.widget.Toast.LENGTH_LONG).show()
+        }
         // --- Selector de tema claro/oscuro ---
         val radioGroupTema = view.findViewById<RadioGroup>(R.id.radioGroupTema)
         val radioClaro = view.findViewById<RadioButton>(R.id.radioClaro)

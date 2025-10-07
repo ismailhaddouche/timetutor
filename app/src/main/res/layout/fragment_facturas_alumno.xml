@@ -7,7 +7,7 @@
     android:padding="24dp">
 
     <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tabFacturas"
+        android:id="@+id/tabFacturasAlumno"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:tabIndicatorColor="@color/black"
@@ -15,34 +15,22 @@
         app:tabTextColor="@color/black"
         android:layout_marginBottom="16dp" />
 
-    <LinearLayout
+    <EditText
+        android:id="@+id/editFechaAlumno"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="12dp">
-        <Spinner
-            android:id="@+id/spinnerAlumnos"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-        <EditText
-            android:id="@+id/editFecha"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="Filtrar por fecha" />
-    </LinearLayout>
-
+        android:hint="Filtrar por fecha"
+        android:layout_marginBottom="12dp" />
 
     <Button
-        android:id="@+id/btnExportarFacturas"
+        android:id="@+id/btnExportarFacturasAlumno"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Exportar facturas"
         android:layout_marginBottom="12dp" />
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerFacturas"
+        android:id="@+id/recyclerFacturasAlumno"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"

@@ -36,7 +36,14 @@ class ConfiguracionProfesorFragment : Fragment() {
         val radioClaro = view.findViewById<RadioButton>(R.id.radioClaro)
         val radioOscuro = view.findViewById<RadioButton>(R.id.radioOscuro)
         val radioSistema = view.findViewById<RadioButton>(R.id.radioSistema)
-        val prefs = requireContext().getSharedPreferences("tema_app", Context.MODE_PRIVATE)
+                // Aviso de conectividad
+                val connectivityManager = requireContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                val network = connectivityManager.activeNetwork
+                val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
+                val online = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                if (!online) {
+                    android.widget.Toast.makeText(context, "Estás sin conexión. Los cambios no se sincronizarán hasta que recuperes la red.", android.widget.Toast.LENGTH_LONG).show()
+                }
         when (prefs.getString("tema", "sistema")) {
             "claro" -> radioClaro.isChecked = true
             "oscuro" -> radioOscuro.isChecked = true

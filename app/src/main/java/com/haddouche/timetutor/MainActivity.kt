@@ -16,6 +16,22 @@ import com.haddouche.timetutor.ui.theme.TimeTutorTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Activar persistencia offline de Firestore
+        try {
+            val settings = com.google.firebase.firestore.FirebaseFirestoreSettings.Builder()
+                .setPersistenceEnabled(true)
+                .build()
+            com.google.firebase.firestore.FirebaseFirestore.getInstance().firestoreSettings = settings
+        } catch (_: Exception) {}
+
+        // Solicitar token de FCM
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                // Aquí podrías guardar el token en Firestore para notificaciones dirigidas
+                android.util.Log.d("FCM", "Token: $token")
+            }
+        }
         val intent = android.content.Intent(this, com.haddouche.timetutor.ui.auth.LoginActivity::class.java)
         startActivity(intent)
         finish()

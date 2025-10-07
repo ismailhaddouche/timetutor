@@ -37,8 +37,26 @@ class LoginActivity : AppCompatActivity() {
         val passwordField = findViewById<EditText>(R.id.passwordField)
         val loginButton = findViewById<Button>(R.id.loginButton)
         val registerButton = findViewById<Button>(R.id.registerButton)
+
         val alumnoRadio = findViewById<RadioButton>(R.id.radioAlumno)
         val profesorRadio = findViewById<RadioButton>(R.id.radioProfesor)
+        val forgotPasswordButton = findViewById<Button>(R.id.forgotPasswordButton)
+
+        forgotPasswordButton.setOnClickListener {
+            val email = emailField.text.toString()
+            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                Toast.makeText(this, "Introduce un email válido para recuperar la contraseña", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            auth.sendPasswordResetEmail(email)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Toast.makeText(this, "Correo de recuperación enviado", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this, "No se pudo enviar el correo de recuperación", Toast.LENGTH_SHORT).show()
+                    }
+                }
+        }
 
         loginButton.setOnClickListener {
             val email = emailField.text.toString()
@@ -96,32 +114,51 @@ class LoginActivity : AppCompatActivity() {
             Toast.makeText(this, "Por favor, introduce email y contraseña", Toast.LENGTH_SHORT).show()
             return
         }
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            Toast.makeText(this, "Introduce un email válido", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (!isNetworkAvailable()) {
             Toast.makeText(this, "Sin conexión a Internet", Toast.LENGTH_SHORT).show()
             return
         }
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    val user = auth.currentUser
-                    if (user != null) {
-                        val userData = User(
-                            uid = user.uid,
-                            email = user.email ?: "",
-                            role = role
-                        )
-                        db.collection("users").document(user.uid).set(userData)
-                            .addOnSuccessListener {
-                                goToHome(role)
-                            }
-                            .addOnFailureListener {
-                                Toast.makeText(this, "Error guardando usuario", Toast.LENGTH_SHORT).show()
-                            }
-                    }
-                } else {
-                    Toast.makeText(this, "No se pudo registrar el usuario. Comprueba el email y la contraseña.", Toast.LENGTH_SHORT).show()
-                }
+        // Comprobar si el email ya está registrado en Firestore
+        db.collection("users").whereEqualTo("email", email).get().addOnSuccessListener { docs ->
+            if (!docs.isEmpty) {
+                Toast.makeText(this, "Este email ya está registrado", Toast.LENGTH_SHORT).show()
+                return@addOnSuccessListener
             }
+            // Si no está, proceder con el registro en Firebase Auth
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
+                        val user = auth.currentUser
+                        if (user != null) {
+                            val userData = User(
+                                uid = user.uid,
+                                email = user.email ?: "",
+                                role = role
+                            )
+                            db.collection("users").document(user.uid).set(userData)
+                                .addOnSuccessListener {
+                                    goToHome(role)
+                                }
+                                .addOnFailureListener {
+                                    Toast.makeText(this, "Error guardando usuario", Toast.LENGTH_SHORT).show()
+                                }
+                        }
+                    } else {
+                        val msg = when {
+                            task.exception?.message?.contains("email address is already in use", true) == true ->
+                                "Este email ya está registrado"
+                            task.exception?.message?.contains("badly formatted", true) == true ->
+                                "Introduce un email válido"
+                            else -> "No se pudo registrar el usuario. Comprueba el email y la contraseña."
+                        }
+                        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
+        }
     }
 
     private fun goToHome(role: String) {

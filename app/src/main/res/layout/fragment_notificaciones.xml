@@ -6,36 +6,30 @@
     android:padding="24dp">
 
     <TextView
+        android:id="@+id/textTituloNotificaciones"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Clases de la semana"
+        android:text="Centro de notificaciones"
         android:textSize="22sp"
         android:textStyle="bold"
         android:layout_gravity="center"
         android:layout_marginBottom="16dp" />
 
-
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerClasesSemana"
+        android:id="@+id/recyclerNotificaciones"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
         android:paddingBottom="8dp" />
 
-
-    <Button
-        android:id="@+id/btnFacturasAlumno"
+    <TextView
+        android:id="@+id/textSinNotificaciones"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ver facturas"
+        android:text="No tienes notificaciones recientes."
+        android:gravity="center"
+        android:visibility="gone"
         android:layout_marginTop="16dp" />
-
-    <Button
-        android:id="@+id/btnNotificaciones"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Centro de notificaciones"
-        android:layout_marginTop="8dp" />
 
 </LinearLayout>

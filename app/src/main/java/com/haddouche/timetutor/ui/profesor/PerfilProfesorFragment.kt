@@ -32,6 +32,15 @@ class PerfilProfesorFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_perfil_profesor, container, false)
+        // Aviso de conectividad
+        val connectivityManager = requireContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork
+        val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
+        val online = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        if (!online) {
+            android.widget.Toast.makeText(context, "Estás sin conexión. Los cambios no se sincronizarán hasta que recuperes la red.", android.widget.Toast.LENGTH_LONG).show()
+        }
+
         val nombreField = view.findViewById<EditText>(R.id.editNombre)
         val apellidosField = view.findViewById<EditText>(R.id.editApellidos)
         val telefonoField = view.findViewById<EditText>(R.id.editTelefono)
@@ -66,46 +75,75 @@ class PerfilProfesorFragment : Fragment() {
         }
 
         btnGuardar.setOnClickListener {
-            val userUpdate = User(
-                uid = uid,
-                email = emailField.text.toString(),
-                role = "profesor",
-                nombre = nombreField.text.toString(),
-                apellidos = apellidosField.text.toString(),
-                telefono = telefonoField.text.toString(),
-                mostrarTelefono = switchTelefono.isChecked,
-                mostrarEmail = switchEmail.isChecked,
-                nombreCalendario = calendarioField.text.toString(),
-                fotoUrl = "" // Se actualizará tras subir la imagen
-            )
-            if (selectedImageUri != null) {
-                val storageRef = FirebaseStorage.getInstance().reference.child("fotos_perfil/$uid.jpg")
-                storageRef.putFile(selectedImageUri!!)
-                    .continueWithTask { task ->
-                        if (!task.isSuccessful) throw task.exception!!
-                        storageRef.downloadUrl
-                    }
-                    .addOnSuccessListener { uri ->
-                        val userFinal = userUpdate.copy(fotoUrl = uri.toString())
-                        db.collection("users").document(uid).set(userFinal)
-                            .addOnSuccessListener {
-                                Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
-                            }
-                            .addOnFailureListener {
-                                Toast.makeText(context, "Error al guardar", Toast.LENGTH_SHORT).show()
-                            }
-                    }
-                    .addOnFailureListener {
-                        Toast.makeText(context, "Error al subir la foto", Toast.LENGTH_SHORT).show()
-                    }
-            } else {
-                db.collection("users").document(uid).set(userUpdate)
-                    .addOnSuccessListener {
-                        Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
-                    }
-                    .addOnFailureListener {
-                        Toast.makeText(context, "Error al guardar", Toast.LENGTH_SHORT).show()
-                    }
+            val email = emailField.text.toString()
+            val telefono = telefonoField.text.toString()
+            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                Toast.makeText(context, "Introduce un email válido", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (telefono.isNotBlank() && !android.util.Patterns.PHONE.matcher(telefono).matches()) {
+                Toast.makeText(context, "Introduce un teléfono válido", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            db.collection("users").whereEqualTo("email", email).get().addOnSuccessListener { docs ->
+                val esPropio = docs.any { it.id == uid }
+                if (docs.size() > 0 && !esPropio) {
+                    Toast.makeText(context, "Este email ya está en uso", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+                val userUpdate = User(
+                    uid = uid,
+                    email = email,
+                    role = "profesor",
+                    nombre = nombreField.text.toString(),
+                    apellidos = apellidosField.text.toString(),
+                    telefono = telefonoField.text.toString(),
+                    mostrarTelefono = switchTelefono.isChecked,
+                    mostrarEmail = switchEmail.isChecked,
+                    nombreCalendario = calendarioField.text.toString(),
+                    fotoUrl = ""
+                )
+                if (selectedImageUri != null) {
+                    val storageRef = FirebaseStorage.getInstance().reference.child("fotos_perfil/$uid.jpg")
+                    storageRef.putFile(selectedImageUri!!)
+                        .continueWithTask { task ->
+                            if (!task.isSuccessful) throw task.exception!!
+                            storageRef.downloadUrl
+                        }
+                        .addOnSuccessListener { uri ->
+                            val userFinal = userUpdate.copy(fotoUrl = uri.toString())
+                            db.collection("users").document(uid).set(userFinal)
+                                .addOnSuccessListener {
+                                    Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                                    // Notificación al profesor
+                                    com.haddouche.timetutor.util.NotificacionesUtil.enviarNotificacion(
+                                        uid,
+                                        "Perfil actualizado",
+                                        "Tu perfil de profesor ha sido actualizado correctamente."
+                                    )
+                                }
+                                .addOnFailureListener {
+                                    Toast.makeText(context, "Error al guardar", Toast.LENGTH_SHORT).show()
+                                }
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(context, "Error al subir la foto", Toast.LENGTH_SHORT).show()
+                        }
+                } else {
+                    db.collection("users").document(uid).set(userUpdate)
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                            // Notificación al profesor
+                            com.haddouche.timetutor.util.NotificacionesUtil.enviarNotificacion(
+                                uid,
+                                "Perfil actualizado",
+                                "Tu perfil de profesor ha sido actualizado correctamente."
+                            )
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(context, "Error al guardar", Toast.LENGTH_SHORT).show()
+                        }
+                }
             }
         }
         return view

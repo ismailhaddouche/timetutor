@@ -35,11 +35,22 @@
             android:text="Profesor" />
     </RadioGroup>
 
+
     <Button
         android:id="@+id/loginButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Iniciar sesión" />
+
+    <Button
+        android:id="@+id/forgotPasswordButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="¿Olvidaste tu contraseña?"
+        android:background="@android:color/transparent"
+        android:textColor="@android:color/holo_blue_dark"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp" />
 
     <Button
         android:id="@+id/registerButton"
