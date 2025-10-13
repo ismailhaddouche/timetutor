@@ -40,5 +40,8 @@
                 android:layout_height="wrap_content"
                 android:text="Sistema"/>
         </RadioGroup>
+
+        <include layout="@layout/reusable_theme_settings" />
+
     </LinearLayout>
 </FrameLayout>
