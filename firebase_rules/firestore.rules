@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // users: 
+    // - El propio usuario puede leer su perfil.
+    // - Los profesores pueden leer cualquier perfil (para buscar alumnos).
+    // - Cualquiera puede leer el perfil de un profesor (para que los alumnos vean info de sus profes).
+    match /users/{userId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == userId || 
+        isTeacher(request.auth.uid) || 
+        resource.data.role == 'profesor'
+      );
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // clases: solo el profesor dueño de la clase puede crear/actualizar/eliminar
+    match /clases/{lessonId} {
+      allow create: if request.auth != null && request.resource.data.teacherUid == request.auth.uid;
+      allow read: if request.auth != null && (
+                    request.auth.uid == resource.data.teacherUid ||
+                    request.auth.uid == resource.data.studentUid
+                  );
+      allow update, delete: if request.auth != null && resource.data.teacherUid == request.auth.uid;
+    }
+
+    // facturas: el profesor crea y actualiza, el alumno y profesor pueden leer
+    match /facturas/{invoiceId} {
+      allow create: if request.auth != null && request.resource.data.teacherUid == request.auth.uid;
+      allow read: if request.auth != null && (request.auth.uid == resource.data.teacherUid || request.auth.uid == resource.data.studentUid);
+      allow update: if request.auth != null && resource.data.teacherUid == request.auth.uid;
+    }
+
+    // categorias: solo el profesor dueño puede crear/actualizar/eliminar
+    match /categorias/{categoryId} {
+      allow create: if request.auth != null && request.resource.data.teacherUid == request.auth.uid;
+      allow read: if request.auth != null;
+      allow update, delete: if request.auth != null && resource.data.teacherUid == request.auth.uid;
+    }
+
+    // notificaciones: cualquier usuario autenticado puede crear; solo el destinatario puede leer
+    match /notificaciones/{notificationId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && request.auth.uid == resource.data.targetUid;
+      // El destinatario puede marcarla como leída
+      allow update: if request.auth != null && request.auth.uid == resource.data.targetUid;
+      allow delete: if false;
+    }
+
+    // matriculas: relación profesor <-> alumno. Estructura: { teacherUid, studentUid, status }
+    match /matriculas/{enrollmentId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.teacherUid || request.auth.uid == resource.data.studentUid
+      );
+      // Tanto el profesor como el alumno pueden crear (el alumno al canjear un código)
+      allow create: if request.auth != null
+        && request.resource.data.teacherUid is string
+        && request.resource.data.studentUid is string
+        && request.resource.data.status in ['activo','pendiente','eliminado','archivado']
+        && (request.resource.data.teacherUid == request.auth.uid
+            || request.resource.data.studentUid == request.auth.uid);
+      // Tanto el profesor como el alumno pueden actualizar (el alumno para archivar)
+      allow update: if request.auth != null
+        && (resource.data.teacherUid == request.auth.uid
+            || resource.data.studentUid == request.auth.uid);
+      allow delete: if false;
+    }
+
+    // invitationCodes: códigos de un solo uso para que alumnos se unan a un profesor
+    match /invitationCodes/{codeId} {
+      allow create: if request.auth != null
+        && request.resource.data.teacherUid == request.auth.uid
+        && request.resource.data.code is string
+        && request.resource.data.expiresAt is timestamp;
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null;
+      allow update: if false;
+    }
+
+    // Función helper para comprobar si un usuario es profesor
+    function isTeacher(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid)) &&
+             get(/databases/$(database)/documents/users/$(uid)).data.role == 'profesor';
+    }
+  }
+}

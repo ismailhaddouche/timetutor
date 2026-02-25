@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1234567890",
+    "project_id": "your-project-id",
+    "storage_bucket": "your-project-id.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1234567890:android:abcdef0123456789",
+        "android_client_info": {
+          "package_name": "com.haddouche.timetutor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1234567890-abcdefg12345hijklmnoop.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.haddouche.timetutor",
+            "certificate_hash": "abcdef0123456789abcdef0123456789"
+          }
+        },
+        {
+          "client_id": "1234567890-1234abcde.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "YOUR_API_KEY_HERE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1234567890-1234abcde.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

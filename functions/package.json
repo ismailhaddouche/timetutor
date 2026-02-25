@@ -1,0 +1,18 @@
+{
+  "name": "timetutor-notifications-cleaner",
+  "version": "1.0.0",
+  "description": "Cloud Functions to purge expired notifications for TimeTutor",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "lint": "eslint . || true",
+    "migrate": "node migrate_expiresAt.js",
+    "deploy": "firebase deploy --only \"functions,firestore\""
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.0.0"
+  }
+}

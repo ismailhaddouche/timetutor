@@ -1,0 +1,34 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Círculo del reloj -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-35,0a35,35 0,1,1 70,0a35,35 0,1,1 -70,0" />
+    
+    <!-- Borde interno decorativo -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M54,54m-30,0a30,30 0,1,1 60,0a30,30 0,1,1 -60,0" />
+        
+    <!-- Manecillas del reloj -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M52,29h4v27h-4z" /> <!-- Manecilla hora -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M52,52h20v4h-20z" /> <!-- Manecilla minutos -->
+        
+    <!-- Centro del reloj -->
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M54,54m-4,0a4,4 0,1,1 8,0a4,4 0,1,1 -8,0" />
+        
+    <!-- Marcas de hora (12, 3, 6, 9) -->
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M53,24h2v6h-2z M80,53h6v2h-6z M53,78h2v6h-2z M22,53h6v2h-6z" />
+</vector>

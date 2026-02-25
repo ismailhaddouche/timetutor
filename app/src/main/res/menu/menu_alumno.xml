@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/menu_inicio" android:title="Inicio" android:icon="@android:drawable/ic_menu_view" />
+    <item android:id="@+id/menu_perfil" android:title="Perfil" android:icon="@android:drawable/ic_menu_myplaces" />
+    <item android:id="@+id/menu_calendarios" android:title="Calendarios" android:icon="@android:drawable/ic_menu_month" />
+    <item android:id="@+id/menu_configuracion" android:title="Configuración" android:icon="@android:drawable/ic_menu_preferences" />
+</menu>
